@@ -9,6 +9,7 @@ import Cookies from "js-cookie";
 export default function Wrapper({ children }: { children: React.ReactNode }) {
 
     const setUser = useAuthStore((state) => state.setUser)
+    const setId = useAuthStore((state) => state.setId)
 
     useEffect(() => {
         const storedUser = Cookies.get('user');
@@ -17,6 +18,7 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
                 const parsedUser = JSON.parse(storedUser);
                 console.log(parsedUser);
                 setUser(parsedUser);
+                setId(parsedUser._id);
             } catch (error) {
                 console.error('Failed to parse user cookie:', error);
             }

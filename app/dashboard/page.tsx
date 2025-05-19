@@ -22,10 +22,9 @@ export default function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const setReport = useAuthStore((state) => state.setReport);
   const report = useAuthStore((state) => state.report);
- 
-
+  const id = useAuthStore((state) => state.id);
   const fetchReports = async () => {
-  const response = await axios.get("https://speakup-api-v2.onrender.com/api/report/retrieve");
+  const response = await axios.get(`https://speakup-api-v2.onrender.com/api/report/retrieve/${id}`);
   return response.data; 
 };
 
