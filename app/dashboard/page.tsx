@@ -7,9 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, AlertTriangle, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios"
-import { useRouter } from "next/navigation"
+
 interface Incident {
   id: string
   title: string
@@ -21,35 +19,8 @@ interface Incident {
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user)
-  const setReport = useAuthStore((state) => state.setReport);
   const report = useAuthStore((state) => state.report);
-  const id = useAuthStore((state) => state.id);
-  const router = useRouter();
-  const fetchReports = async () => {
-  const response = await axios.get(`https://speakup-api-v2.onrender.com/api/report/retrieve/${id}`);
-  return response.data; 
-};
-
-const { isPending, data, error } = useQuery({
-  queryKey: ["reports"],
-  queryFn: fetchReports,
-});
-
-  if (!user) {
-    router.push("/login");
-  }
-
-  if (isPending) {
-    console.log("loading..")
-  }
-
-useEffect(() => {
-  if (data) {
-    setReport(data);
-  }
-}, [data, setReport]);
-
-
+  const isLoading  = useAuthStore((state) => state.loading)
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -100,7 +71,7 @@ useEffect(() => {
             <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
           </CardHeader>
           <CardContent>
-            {isPending ? (
+            {isLoading ? (
               <Skeleton className="h-10 w-20" />
             ) : (
               <div className="text-3xl font-bold">{report?.length}</div>
@@ -112,7 +83,7 @@ useEffect(() => {
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            {isPending ? (
+            {isLoading ? (
               <Skeleton className="h-10 w-20" />
             ) : (
               <div className="text-3xl font-bold">{report?.filter((inc) => inc.category === "spam").length}</div>
@@ -124,7 +95,7 @@ useEffect(() => {
             <CardTitle className="text-sm font-medium">Resolved</CardTitle>
           </CardHeader>
           <CardContent>
-            {isPending ? (
+            {isLoading ? (
               <Skeleton className="h-10 w-20" />
             ) : (
               <div className="text-3xl font-bold">{report?.filter((inc) => inc.category === "spam").length}</div>
@@ -139,7 +110,7 @@ useEffect(() => {
           <CardDescription>Your recently reported incidents and their status</CardDescription>
         </CardHeader>
         <CardContent>
-          {isPending ? (
+          {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
@@ -153,13 +124,13 @@ useEffect(() => {
                   className="flex items-center justify-between p-4 border border-gray-100 rounded-lg"
                 >
                   <div className="flex items-start gap-4">
-                    <div
+                    {/* <div
                       className={`p-2 rounded-full ${getStatusColor(incident.status)} flex items-center justify-center`}
                     >
                       {getStatusIcon(incident.status)}
-                    </div>
+                    </div> */}
                     <div>
-                      <h3 className="font-medium">{incident.title}</h3>
+                      {/* <h3 className="font-medium">{incident.title}</h3> */}
                       <div className="flex gap-2 text-sm text-gray-500">
                         <span>{incident._id}</span>
                         <span>•</span>
@@ -168,13 +139,13 @@ useEffect(() => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div
+                    {/* <div
                       className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
                         incident.status,
                       )}`}
                     >
                       {incident.status}
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}

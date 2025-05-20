@@ -36,12 +36,11 @@ export default function DashboardLayout({
   const handleLogout = () => {
     toast.error("Logged out")
     setToken(null)
-    setUser(null)
+    setUser(null) 
+    router.push("/login");
     Cookies.remove('user');
     Cookies.remove('token');   
     setLoading(false);
-    router.push("/login");
- 
   }
 
 

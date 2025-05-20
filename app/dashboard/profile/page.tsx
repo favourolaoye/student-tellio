@@ -30,11 +30,11 @@ export default function ProfilePage() {
     }
   })
 
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     setLoading(false)
-  //   }, 1000)
-  // })
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false)
+    }, 1000)
+  })
 
 
   return (

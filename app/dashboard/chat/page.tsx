@@ -63,6 +63,12 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  useEffect(() => {
+    if (!user) {
+    router.push("/login");
+  }
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -108,7 +114,7 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, botResponse])
     } catch (error) {
-      toast.error("Failed to get assistant response.")
+      toast.error("me: Failed to get assistant response.")
       console.error(error)
     } finally {
       setIsSubmitting(false)
@@ -143,9 +149,7 @@ export default function ChatPage() {
     }
   }
 
-  if (!user) {
-    router.push("/login");
-  }
+
 
   return (
     <div className="space-y-6">

@@ -2,17 +2,15 @@ import { create } from "zustand"
 
 
 interface User {
-  id: string
+  _id: string
   name: string
   email: string
 }
 
 interface T {
-  report: string 
-  category: string
-  _id: string
-  status: string
-  title: string
+  report: string, 
+  category: string,
+  _id: string,
 }
 interface  IAuth {
     user:  User | null;
@@ -20,12 +18,12 @@ interface  IAuth {
     loading:  boolean;
     token: string | null;
     error:  string | null;
-    report: Array<T> | null;
+    report: Array<T> |[];
     setUser: (user: User | null ) => void,
     setError: (error: string | null ) => void,
     setLoading: (loading: boolean) => void,
     setToken: (token: string | null) => void,
-    setReport: (report: Array<any> | null) => void,
+    setReport: (report: Array<T> | []) => void,
     setId: (id: number| null) => void
 }
 
