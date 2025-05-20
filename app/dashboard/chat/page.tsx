@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import axios from "axios"
+import { useRouter } from "next/navigation"
 
 interface Message {
   id: string
@@ -52,6 +53,7 @@ export default function ChatPage() {
   const { user, token } = useAuthStore()
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
   const [input, setInput] = useState("")
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportContent, setReportContent] = useState("")
@@ -141,7 +143,9 @@ export default function ChatPage() {
     }
   }
 
-  if (!user) return null
+  if (!user) {
+    router.push("/login");
+  }
 
   return (
     <div className="space-y-6">
@@ -171,8 +175,8 @@ export default function ChatPage() {
                   <Avatar className="h-8 w-8">
                     {message.sender === "user" ? (
                       <>
-                        <AvatarImage src="" alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="" alt={user?.name} />
+                        <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
                       </>
                     ) : (
                       <>

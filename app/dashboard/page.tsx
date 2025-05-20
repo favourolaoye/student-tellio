@@ -9,6 +9,7 @@ import { MessageSquare, AlertTriangle, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios"
+import { useRouter } from "next/navigation"
 interface Incident {
   id: string
   title: string
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const setReport = useAuthStore((state) => state.setReport);
   const report = useAuthStore((state) => state.report);
   const id = useAuthStore((state) => state.id);
+  const router = useRouter();
   const fetchReports = async () => {
   const response = await axios.get(`https://speakup-api-v2.onrender.com/api/report/retrieve/${id}`);
   return response.data; 
@@ -34,7 +36,7 @@ const { isPending, data, error } = useQuery({
 });
 
   if (!user) {
-    return null
+    router.push("/login");
   }
 
   if (isPending) {
@@ -81,7 +83,7 @@ useEffect(() => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-gray-400 mt-2 font-semibold">
-            Welcome back, {user.name}.
+            Welcome back, {user?.name}.
           </p>
         </div>
         <Link href="/dashboard/chat">
