@@ -20,8 +20,7 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
       return response.data; 
     };
     
-    useEffect(() => {
-      
+    useEffect(() => { 
       if (!user) {
         router.push("/login");
       }

@@ -24,6 +24,7 @@ export default function DashboardLayout({
   const setToken = useAuthStore((state) => state.setToken)
   const setLoading = useAuthStore((state) => state.setLoading)
   const queryClient = new QueryClient();
+  console.log(token);
   console.log(user);
   // Use a string property from user, e.g., user.name or user.email
   const username = user ? user.name || user.email || "User" : "";
