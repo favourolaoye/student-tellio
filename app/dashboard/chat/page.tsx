@@ -187,8 +187,8 @@ export default function ChatPage() {
                       </>
                     ) : (
                       <>
-                        <AvatarImage src="/placeholder.svg" alt="Bot" />
-                        <AvatarFallback>T</AvatarFallback>
+                        <AvatarImage src="/bot.png" alt="Bot" />
+                        <AvatarFallback>Bot</AvatarFallback>
                       </>
                     )}
                   </Avatar>
