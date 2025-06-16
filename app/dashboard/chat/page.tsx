@@ -1,21 +1,16 @@
 "use client"
+
 import { useState, useRef, useEffect } from "react"
 import { useAuthStore } from "@/store/auth-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
-import { useRouter } from "next/navigation"
 
 interface Message {
   id: string
@@ -24,53 +19,66 @@ interface Message {
   timestamp: Date
 }
 
+type Step =
+  | "askIncident"
+  | "askDate"
+  | "askTime"
+  | "askDescription"
+  | "askLecturerInvolved"
+  | "askLecturerName"
+  | "submitReport"
+  | "completed"
+
 export default function ChatPage() {
-  const { user, token } = useAuthStore()
-  const router = useRouter()
+  const { user } = useAuthStore()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [step, setStep] = useState(0)
-  const [reportData, setReportData] = useState({ day: "", time: "", description: "" })
+  const [step, setStep] = useState<Step>("askIncident")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  const [reportData, setReportData] = useState({
+    date: "",
+    time: "",
+    description: "",
+    lecturerInvolved: "",
+    lecturerName: "",
+  })
 
-  useEffect(() => {
-    if (!user) {
-      router.push("/login")
-    } else {
-      // Greet the user based on time
-      const now = new Date()
-      const hour = now.getHours()
-      const greeting =
-        hour < 12
-          ? "Good morning!"
-          : hour < 17
-          ? "Good afternoon!"
-          : "Good evening!"
+  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 
-      setMessages([
-        {
-          id: "0",
-          content: `Hi, ${greeting} 👋`,
-          sender: "bot",
-          timestamp: new Date(),
-        },
-        {
-          id: "1",
-          content: "Do you have any incident you want to report?",
-          sender: "bot",
-          timestamp: new Date(),
-        },
-      ])
-    }
-  }, [])
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Good morning"
+    if (hour < 17) return "Good afternoon"
+    return "Good evening"
+  }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  const botReply = async (text: string) => {
+    await delay(1200)
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        content: text,
+        sender: "bot",
+        timestamp: new Date(),
+      },
+    ])
+  }
+
+  const resetConversation = async () => {
+    await delay(5000)
+    setMessages([])
+    setReportData({
+      date: "",
+      time: "",
+      description: "",
+      lecturerInvolved: "",
+      lecturerName: "",
+    })
+    setStep("askIncident")
+    botReply(`${getGreeting()}! Do you have another incident you'd like to report?`)
   }
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -85,87 +93,107 @@ export default function ChatPage() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const text = input.trim().toLowerCase()
     setInput("")
-    setIsSubmitting(true)
-
-    let botReply = ""
-    let updatedData = { ...reportData }
 
     switch (step) {
-      case 0:
-        if (input.toLowerCase().includes("yes")) {
-          botReply = "Great. What day did the incident happen?"
-          setStep(1)
+      case "askIncident":
+        if (text.includes("yes")) {
+          setStep("askDate")
+          await botReply("Great! What day did the incident happen? (e.g July 10 2025)")
         } else {
-          botReply = "Okay. Let me know whenever you're ready."
-          setStep(0)
+          await botReply("Alright. Let me know if anything comes up.")
         }
         break
 
-      case 1:
-        updatedData.day = input
-        botReply = "Thanks. What time did it happen?"
-        setReportData(updatedData)
-        setStep(2)
+      case "askDate":
+        setReportData((r) => ({ ...r, date: input }))
+        setStep("askTime")
+        await botReply("Thanks. What time did it happen?")
         break
 
-      case 2:
-        updatedData.time = input
-        botReply = "Got it. Please describe what happened."
-        setReportData(updatedData)
-        setStep(3)
+      case "askTime":
+        setReportData((r) => ({ ...r, time: input }))
+        setStep("askDescription")
+        await botReply("Please describe what happened.")
         break
 
-      case 3:
-        updatedData.description = input
-        botReply = "Thanks for reporting. We’ll get back to you as soon as possible."
-        setReportData(updatedData)
+      case "askDescription":
+        setReportData((r) => ({ ...r, description: input }))
+        setStep("askLecturerInvolved")
+        await botReply("Was a lecturer involved? (yes/no)")
+        break
 
-        try {
-          await axios.post("https://speakup-api-v2.onrender.com/api/report/save", {
-            name: user?.name,
-            email: user?.email,
-            report: `Day: ${updatedData.day}\nTime: ${updatedData.time}\nIncident: ${updatedData.description}`,
-          })
-          // toast.success("Report submitted successfully.")
-        } catch (err) {
-          toast.error("Failed to submit report.")
+      case "askLecturerInvolved":
+        if (text.includes("yes")) {
+          setReportData((r) => ({ ...r, lecturerInvolved: "yes" }))
+          setStep("askLecturerName")
+          await botReply("Please provide the lecturer’s name (or say 'prefer not to say').")
+        } else {
+          setReportData((r) => ({ ...r, lecturerInvolved: "no" }))
+          setStep("submitReport")
+          handleFinalSubmission()
         }
+        break
 
-        setStep(0)
-        setReportData({ day: "", time: "", description: "" })
+      case "askLecturerName":
+        setReportData((r) => ({ ...r, lecturerName: input }))
+        setStep("submitReport")
+        handleFinalSubmission()
         break
 
       default:
-        botReply = "Can you please clarify what you mean?"
-        setStep(0)
         break
     }
-
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: botReply,
-        sender: "bot",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
-      setIsSubmitting(false)
-    }, 1200)
   }
+
+  const handleFinalSubmission = async () => {
+    await botReply("Thanks for reporting. We’re submitting your report now...")
+    try {
+      setIsSubmitting(true)
+      await delay(1000)
+
+      await axios.post("https://speakup-api-v2.onrender.com/api/report/save", {
+        name: user?.name || "Anonymous",
+        email: user?.email || "N/A",
+        report: `
+Date: ${reportData.date}
+Time: ${reportData.time}
+Description: ${reportData.description}
+Lecturer Involved: ${reportData.lecturerInvolved}
+Lecturer Name: ${reportData.lecturerName || "N/A"}
+        `,
+      })
+
+      await botReply("Thank you. Your report has been received. We’ll get back to you as soon as possible.")
+      setStep("completed")
+      resetConversation()
+    } catch (error) {
+      toast.error("Failed to submit report.")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  useEffect(() => {
+    botReply(`${getGreeting()}! Do you have any incident you'd like to report?`)
+  }, [])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Report Incident</h1>
-        <p className="text-gray-500 mt-2">Chat with our AI assistant to report incidents or issues</p>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight">Report Incident</h1>
+      <p className="text-gray-500 mt-2">Chat with our AI assistant to report incidents or issues</p>
 
       <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle>Incident Reporting Assistant</CardTitle>
           <CardDescription>
-            Describe your issue and our AI assistant will help you report it properly.
+            Our assistant will guide you through your report. Please answer the questions step by step.
           </CardDescription>
         </CardHeader>
 
@@ -176,21 +204,9 @@ export default function ChatPage() {
                 key={message.id}
                 className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`flex gap-3 max-w-[80%] ${message.sender === "user" ? "flex-row-reverse" : ""}`}
-                >
+                <div className={`flex gap-3 max-w-[80%] ${message.sender === "user" ? "flex-row-reverse" : ""}`}>
                   <Avatar className="h-8 w-8">
-                    {message.sender === "user" ? (
-                      <>
-                        <AvatarImage src="" alt={user?.name} />
-                        <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-                      </>
-                    ) : (
-                      <>
-                        <AvatarImage src="/bot.png" alt="Bot" />
-                        <AvatarFallback>Bot</AvatarFallback>
-                      </>
-                    )}
+                    <AvatarFallback>{message.sender === "user" ? "U" : "T"}</AvatarFallback>
                   </Avatar>
                   <div>
                     <div
@@ -219,13 +235,13 @@ export default function ChatPage() {
         <CardFooter>
           <form onSubmit={handleSendMessage} className="flex w-full gap-2">
             <Input
-              placeholder="Type your response..."
+              placeholder="Type your message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || step === "completed"}
               className="flex-1"
             />
-            <Button type="submit" disabled={isSubmitting || !input.trim()}>
+            <Button type="submit" disabled={isSubmitting || !input.trim() || step === "completed"}>
               <Send className="h-4 w-4 mr-2" />
               Send
             </Button>
