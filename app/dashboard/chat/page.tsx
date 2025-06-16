@@ -127,7 +127,7 @@ export default function ChatPage() {
             email: user?.email,
             report: `Day: ${updatedData.day}\nTime: ${updatedData.time}\nIncident: ${updatedData.description}`,
           })
-          toast.success("Report submitted successfully.")
+          // toast.success("Report submitted successfully.")
         } catch (err) {
           toast.error("Failed to submit report.")
         }
