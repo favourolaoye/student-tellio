@@ -1,5 +1,4 @@
 "use client"
-import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { useAuthStore } from "@/store/auth-store"
 import { Button } from "@/components/ui/button"
@@ -15,15 +14,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
 import axios from "axios"
 import { useRouter } from "next/navigation"
 
@@ -34,29 +24,14 @@ interface Message {
   timestamp: Date
 }
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    content: "Hello! I'm your Tellio assistant. How can I help you today?",
-    sender: "bot",
-    timestamp: new Date(),
-  },
-  {
-    id: "2",
-    content: "You can report any incidents or issues you're facing, and I'll help guide you through the process.",
-    sender: "bot",
-    timestamp: new Date(),
-  },
-]
-
 export default function ChatPage() {
   const { user, token } = useAuthStore()
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const router = useRouter()
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
-  const [reportContent, setReportContent] = useState("")
+  const [step, setStep] = useState(0)
+  const [reportData, setReportData] = useState({ day: "", time: "", description: "" })
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -65,9 +40,34 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!user) {
-    router.push("/login");
-  }
-  });
+      router.push("/login")
+    } else {
+      // Greet the user based on time
+      const now = new Date()
+      const hour = now.getHours()
+      const greeting =
+        hour < 12
+          ? "Good morning!"
+          : hour < 17
+          ? "Good afternoon!"
+          : "Good evening!"
+
+      setMessages([
+        {
+          id: "0",
+          content: `Hi, ${greeting} 👋`,
+          sender: "bot",
+          timestamp: new Date(),
+        },
+        {
+          id: "1",
+          content: "Do you have any incident you want to report?",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ])
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -88,68 +88,71 @@ export default function ChatPage() {
     setInput("")
     setIsSubmitting(true)
 
-    try {
-      const { data } = await axios.post(
-        "/api/chat",
-        {
-          message: input,
-          history: [...messages, userMessage].map((msg) => ({
-            role: msg.sender === "user" ? "user" : "assistant",
-            content: msg.content,
-          })),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+    let botReply = ""
+    let updatedData = { ...reportData }
 
-      const botResponse: Message = {
+    switch (step) {
+      case 0:
+        if (input.toLowerCase().includes("yes")) {
+          botReply = "Great. What day did the incident happen?"
+          setStep(1)
+        } else {
+          botReply = "Okay. Let me know whenever you're ready."
+          setStep(0)
+        }
+        break
+
+      case 1:
+        updatedData.day = input
+        botReply = "Thanks. What time did it happen?"
+        setReportData(updatedData)
+        setStep(2)
+        break
+
+      case 2:
+        updatedData.time = input
+        botReply = "Got it. Please describe what happened."
+        setReportData(updatedData)
+        setStep(3)
+        break
+
+      case 3:
+        updatedData.description = input
+        botReply = "Thanks for reporting. We’ll get back to you as soon as possible."
+        setReportData(updatedData)
+
+        try {
+          await axios.post("https://speakup-api-v2.onrender.com/api/report/save", {
+            name: user?.name,
+            email: user?.email,
+            report: `Day: ${updatedData.day}\nTime: ${updatedData.time}\nIncident: ${updatedData.description}`,
+          })
+          toast.success("Report submitted successfully.")
+        } catch (err) {
+          toast.error("Failed to submit report.")
+        }
+
+        setStep(0)
+        setReportData({ day: "", time: "", description: "" })
+        break
+
+      default:
+        botReply = "Can you please clarify what you mean?"
+        setStep(0)
+        break
+    }
+
+    setTimeout(() => {
+      const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response,
+        content: botReply,
         sender: "bot",
         timestamp: new Date(),
       }
-
-      setMessages((prev) => [...prev, botResponse])
-    } catch (error) {
-      toast.error("me: Failed to get assistant response.")
-      console.error(error)
-    } finally {
+      setMessages((prev) => [...prev, botMessage])
       setIsSubmitting(false)
-    }
+    }, 1200)
   }
-
-  const openReportDialog = () => {
-    const reportText = messages
-      .filter((m) => m.sender === "user")
-      .map((m) => m.content)
-      .join("\n\n")
-
-    setReportContent(reportText)
-    setIsReportModalOpen(true)
-  }
-
-  const handleReportSubmit = async () => {
-    if (!token) {
-      toast.error("User information is missing.");
-      return;
-    }
-    try {
-      setIsSubmitting(true)
-      await axios.post("https://speakup-api-v2.onrender.com/api/report/save",{name: user?.name, email: user?.email, report: reportContent})
-      toast.success("Report submitted successfully.")
-      setIsReportModalOpen(false)
-    } catch (error) {
-      toast.error("Failed to submit report.")
-      console.error(error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-
 
   return (
     <div className="space-y-6">
@@ -162,7 +165,7 @@ export default function ChatPage() {
         <CardHeader>
           <CardTitle>Incident Reporting Assistant</CardTitle>
           <CardDescription>
-            Describe your issue and our AI assistant will help you report it properly
+            Describe your issue and our AI assistant will help you report it properly.
           </CardDescription>
         </CardHeader>
 
@@ -180,11 +183,11 @@ export default function ChatPage() {
                     {message.sender === "user" ? (
                       <>
                         <AvatarImage src="" alt={user?.name} />
-                        <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                       </>
                     ) : (
                       <>
-                        <AvatarImage src="/placeholder.svg" alt="Tellio" />
+                        <AvatarImage src="/placeholder.svg" alt="Bot" />
                         <AvatarFallback>T</AvatarFallback>
                       </>
                     )}
@@ -213,10 +216,10 @@ export default function ChatPage() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-3">
+        <CardFooter>
           <form onSubmit={handleSendMessage} className="flex w-full gap-2">
             <Input
-              placeholder="Describe your issue..."
+              placeholder="Type your response..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isSubmitting}
@@ -227,35 +230,8 @@ export default function ChatPage() {
               Send
             </Button>
           </form>
-
-          <div className="w-full flex justify-end">
-            <Button variant="outline" onClick={openReportDialog}>
-              Submit Report
-            </Button>
-          </div>
         </CardFooter>
       </Card>
-
-      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Review and Submit Your Report</DialogTitle>
-            <DialogDescription>
-              Please review or edit your report before submitting.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={reportContent}
-            onChange={(e) => setReportContent(e.target.value)}
-            className="min-h-[200px]"
-          />
-          <DialogFooter>
-            <Button onClick={handleReportSubmit} disabled={isSubmitting}>
-              Submit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
