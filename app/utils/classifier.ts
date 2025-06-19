@@ -1,8 +1,8 @@
-import { DayPicker } from 'react-day-picker';
+
 import OpenAI from "openai"
 
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_URL_OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 })
 
