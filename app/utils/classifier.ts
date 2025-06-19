@@ -2,8 +2,7 @@
 import OpenAI from "openai"
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
+  apiKey: process.env.OPENAI_API_KEY
 })
 
 export const classifyReport = async (description: string): Promise<string> => {
@@ -24,7 +23,7 @@ Description:
 Only reply with the most appropriate category. If none match, return "None of the Above".`
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4", // or "gpt-3.5-turbo"
+    model: "gpt-3.5-turbo",
     messages: [{ role: "user", content: prompt }],
   })
 
