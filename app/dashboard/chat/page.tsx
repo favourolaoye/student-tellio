@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input"
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
+import { classifyReport } from "@/app/utils/classifier"
 
 interface Message {
   id: string
@@ -35,7 +36,9 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep] = useState<Step>("askIncident")
+  const [reportCategory, setReportCategory] = useState<string | null>(null) // ✅ New state
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
 
   const [reportData, setReportData] = useState({
     date: "",
@@ -68,7 +71,7 @@ export default function ChatPage() {
   }
 
   const resetConversation = async () => {
-    await delay(5000)
+    await delay(10000)
     setMessages([])
     setReportData({
       date: "",
@@ -77,6 +80,7 @@ export default function ChatPage() {
       lecturerInvolved: "",
       lecturerName: "",
     })
+    setReportCategory(null) 
     setStep("askIncident")
     botReply(`${getGreeting()}! Do you have another incident you'd like to report?`)
   }
@@ -86,7 +90,7 @@ export default function ChatPage() {
     if (!input.trim()) return
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: generateId(),
       content: input,
       sender: "user",
       timestamp: new Date(),
@@ -120,6 +124,14 @@ export default function ChatPage() {
 
       case "askDescription":
         setReportData((r) => ({ ...r, description: input }))
+        try {
+          const category = await classifyReport(input) // ✅ Classify
+          setReportCategory(category)
+          await botReply(`Thank you. This may fall under: **${category}**.`)
+        } catch (err) {
+          console.error("Classification failed:", err)
+          await botReply("Thanks. We'll proceed.")
+        }
         setStep("askLecturerInvolved")
         await botReply("Was a lecturer involved? (yes/no)")
         break
@@ -148,7 +160,7 @@ export default function ChatPage() {
   }
 
   const handleFinalSubmission = async () => {
-    await botReply("Thanks for reporting. We’re submitting your report now...")
+    await botReply("Thanks for reporting. We're submitting your report now...")
     try {
       setIsSubmitting(true)
       await delay(1000)
@@ -157,11 +169,11 @@ export default function ChatPage() {
         name: user?.name || "Anonymous",
         email: user?.email || "N/A",
         report: `
-Date: ${reportData.date}
-Time: ${reportData.time}
-Description: ${reportData.description}
-Lecturer Involved: ${reportData.lecturerInvolved}
-Lecturer Name: ${reportData.lecturerName || "N/A"}
+          Date: ${reportData.date}
+          Time: ${reportData.time}
+          Description: ${reportData.description}
+          Lecturer Involved: ${reportData.lecturerInvolved}
+          Lecturer Name: ${reportData.lecturerName || "N/A"}
         `,
       })
 
@@ -210,11 +222,10 @@ Lecturer Name: ${reportData.lecturerName || "N/A"}
                   </Avatar>
                   <div>
                     <div
-                      className={`rounded-lg px-4 py-2 ${
-                        message.sender === "user"
+                      className={`rounded-lg px-4 py-2 ${message.sender === "user"
                           ? "bg-black text-white"
                           : "bg-gray-100 text-gray-900"
-                      }`}
+                        }`}
                     >
                       <p>{message.content}</p>
                     </div>
@@ -230,6 +241,12 @@ Lecturer Name: ${reportData.lecturerName || "N/A"}
             ))}
             <div ref={messagesEndRef} />
           </div>
+
+          {reportCategory && step !== "completed" && (
+            <p className="text-sm mt-4 text-blue-600 font-medium">
+              🧠 Detected Category: <strong>{reportCategory}</strong>
+            </p>
+          )}
         </CardContent>
 
         <CardFooter>
