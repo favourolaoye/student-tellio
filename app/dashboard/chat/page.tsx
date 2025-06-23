@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
-// import { classifyReport } from "@/app/api/classify/route"
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string
@@ -25,6 +25,7 @@ type Step =
   | "askDate"
   | "askTime"
   | "askDescription"
+  | "askProof"
   | "askLecturerInvolved"
   | "askLecturerName"
   | "submitReport"
@@ -36,7 +37,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep] = useState<Step>("askIncident")
-  const [reportCategory, setReportCategory] = useState<string | null>(null) // ✅ New state
+  const [reportCategory, setReportCategory] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
 
@@ -44,6 +45,7 @@ export default function ChatPage() {
     date: "",
     time: "",
     description: "",
+    proofImageUrl: "",
     lecturerInvolved: "",
     lecturerName: "",
   })
@@ -51,19 +53,18 @@ export default function ChatPage() {
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 
   const classifyReport = async (description: string): Promise<string> => {
-  const res = await fetch("/api/classify", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ description })
-  })
+    const res = await fetch("/api/classify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ description })
+    })
 
-  if (!res.ok) throw new Error("Failed to classify")
-
-  const data = await res.json()
-  return data.category
-}
+    if (!res.ok) throw new Error("Failed to classify")
+    const data = await res.json()
+    return data.category
+  }
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -92,10 +93,11 @@ export default function ChatPage() {
       date: "",
       time: "",
       description: "",
+      proofImageUrl: "",
       lecturerInvolved: "",
       lecturerName: "",
     })
-    setReportCategory(null) 
+    setReportCategory(null)
     setStep("askIncident")
     botReply(`${getGreeting()}! Do you have another incident you'd like to report?`)
   }
@@ -140,15 +142,24 @@ export default function ChatPage() {
       case "askDescription":
         setReportData((r) => ({ ...r, description: input }))
         try {
-          const category = await classifyReport(input) // ✅ Classify
+          const category = await classifyReport(input)
           setReportCategory(category)
           await botReply(`Thank you. This may fall under: **${category}**.`)
         } catch (err) {
           console.error("Classification failed:", err)
           await botReply("Thanks. We'll proceed.")
         }
-        setStep("askLecturerInvolved")
-        await botReply("Was a lecturer involved? (yes/no)")
+        setStep("askProof")
+        await botReply("Do you want to add any proof (e.g. image)?")
+        break
+
+      case "askProof":
+        if (text.includes("yes")) {
+          await botReply("Please upload the image below.")
+        } else {
+          setStep("askLecturerInvolved")
+          await botReply("Was a lecturer involved? (yes/no)")
+        }
         break
 
       case "askLecturerInvolved":
@@ -174,6 +185,41 @@ export default function ChatPage() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", "incident_proof") 
+
+    try {
+      const res = await fetch("https://api.cloudinary.com/v1_1/dna887i0z/image/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      const imageUrl = data.secure_url
+
+      setReportData((r) => ({ ...r, proofImageUrl: imageUrl }))
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          content: `🖼️ [Proof image uploaded](${imageUrl})`,
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ])
+      setStep("askLecturerInvolved")
+      await botReply("Got it. Was a lecturer involved? (yes/no)")
+    } catch (err) {
+      toast.error("Image upload failed.")
+      console.error(err)
+    }
+  }
+
   const handleFinalSubmission = async () => {
     await botReply("Thanks for reporting. We're submitting your report now...")
     try {
@@ -187,6 +233,7 @@ export default function ChatPage() {
           Date: ${reportData.date}
           Time: ${reportData.time}
           Description: ${reportData.description}
+          Proof Image: ${reportData.proofImageUrl || "None"}
           Lecturer Involved: ${reportData.lecturerInvolved}
           Lecturer Name: ${reportData.lecturerName || "N/A"}
         `,
@@ -238,11 +285,11 @@ export default function ChatPage() {
                   <div>
                     <div
                       className={`rounded-lg px-4 py-2 ${message.sender === "user"
-                          ? "bg-black text-white"
-                          : "bg-gray-100 text-gray-900"
+                        ? "bg-black text-white"
+                        : "bg-gray-100 text-gray-900"
                         }`}
                     >
-                      <p>{message.content}</p>
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {message.timestamp.toLocaleTimeString([], {
@@ -279,6 +326,12 @@ export default function ChatPage() {
             </Button>
           </form>
         </CardFooter>
+
+        {step === "askProof" && (
+          <div className="px-6 pb-6">
+            <Input type="file" accept="image/*" onChange={handleImageUpload} />
+          </div>
+        )}
       </Card>
     </div>
   )
