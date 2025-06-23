@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
-import { classifyReport } from "@/app/utils/classifier"
+// import { classifyReport } from "@/app/api/classify/route"
 
 interface Message {
   id: string
@@ -49,6 +49,21 @@ export default function ChatPage() {
   })
 
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
+
+  const classifyReport = async (description: string): Promise<string> => {
+  const res = await fetch("/api/classify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ description })
+  })
+
+  if (!res.ok) throw new Error("Failed to classify")
+
+  const data = await res.json()
+  return data.category
+}
 
   const getGreeting = () => {
     const hour = new Date().getHours()
