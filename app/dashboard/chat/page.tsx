@@ -73,7 +73,7 @@ export default function ChatPage() {
   }
 
   const botReply = async (text: string) => {
-    await delay(1200)
+    await delay(12000)
     setMessages((prev) => [
       ...prev,
       {
