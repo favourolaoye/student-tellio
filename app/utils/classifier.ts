@@ -1,8 +1,7 @@
-
 import OpenAI from "openai"
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!
+  apiKey: process.env.OPENAI_API_KEY
 })
 
 export const classifyReport = async (description: string): Promise<string> => {
@@ -12,7 +11,7 @@ export const classifyReport = async (description: string): Promise<string> => {
     "Financial/Resources Misconduct",
     "Safety/Security Breaches",
     "None of the Above",
-  ]
+]
 
   const prompt = `Classify the following report description into one of these categories:
 ${categories.join(", ")}
@@ -20,7 +19,7 @@ ${categories.join(", ")}
 Description:
 "${description}"
 
-Only reply with the most appropriate category. If none match, return "None of the Above".`
+Only reply with the most appropriate category. If none match, return "spam".`
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
@@ -28,5 +27,5 @@ Only reply with the most appropriate category. If none match, return "None of th
   })
 
   const category = response.choices[0].message.content?.trim()
-  return categories.includes(category!) ? category! : "None of the Above"
+  return categories.includes(category!) ? category! : "spam"
 }
