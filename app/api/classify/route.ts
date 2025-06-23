@@ -1,17 +1,20 @@
+import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 })
 
-export const classifyReport = async (description: string): Promise<string> => {
-  const categories = [
-    "Academic Misconduct",
-    "Harassment and Discrimination",
-    "Financial/Resources Misconduct",
-    "Safety/Security Breaches",
-    "None of the Above",
+const categories = [
+  "Academic Misconduct",
+  "Harassment and Discrimination",
+  "Financial/Resources Misconduct",
+  "Safety/Security Breaches",
+  "None of the Above",
 ]
+
+export async function POST(req: NextRequest) {
+  const { description } = await req.json()
 
   const prompt = `Classify the following report description into one of these categories:
 ${categories.join(", ")}
@@ -27,5 +30,7 @@ Only reply with the most appropriate category. If none match, return "spam".`
   })
 
   const category = response.choices[0].message.content?.trim()
-  return categories.includes(category!) ? category! : "spam"
+  const result = categories.includes(category!) ? category! : "spam"
+
+  return NextResponse.json({ category: result })
 }
