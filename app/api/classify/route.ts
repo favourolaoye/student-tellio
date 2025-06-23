@@ -10,7 +10,7 @@ const categories = [
   "Harassment and Discrimination",
   "Financial/Resources Misconduct",
   "Safety/Security Breaches",
-  "None of the Above",
+  "spam",
 ]
 
 export async function POST(req: NextRequest) {
